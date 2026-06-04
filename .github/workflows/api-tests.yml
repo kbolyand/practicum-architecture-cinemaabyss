@@ -3,7 +3,6 @@ name: API Tests
 on:
   workflow_run:
     workflows: ["Docker Build and Push"]
-    branches: '**'
     types:
       - completed
   workflow_dispatch:

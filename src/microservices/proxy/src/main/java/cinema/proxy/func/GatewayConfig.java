@@ -14,6 +14,9 @@ import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.ServerResponse;
 
+import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions.http;
+import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
+
 @Configuration
 @AllArgsConstructor
 @Slf4j
@@ -24,9 +27,13 @@ public class GatewayConfig {
     public RouterFunction<ServerResponse> gatewayRoutes() {
         return GatewayRouterFunctions.route("movies-gateway")
                 .route(RequestPredicates.path("/health"), _ -> ServerResponse.ok().body("OK"))
-                .route(RequestPredicates.path("/api/movies"), _ -> ServerResponse.permanentRedirect(URI.create(chooseTarget())).build())
-                .route(RequestPredicates.path("/api/movies/**"), _ -> ServerResponse.permanentRedirect(URI.create(chooseTarget())).build())
-                .route(RequestPredicates.all(), _ -> ServerResponse.permanentRedirect(URI.create(properties.getMonolithUrl())).build())
+                .route(RequestPredicates.all(), http())
+                .before((request) -> {
+                    String requestURI = request.servletRequest().getRequestURI();
+                    String targetUrl =  requestURI.startsWith("/api/movies") ? chooseTarget() : properties.getMonolithUrl();
+                    log.info("requestURI = {}, requestURL = {}, targetUrl = {}", request.servletRequest().getRequestURI(), request.servletRequest().getRequestURL(), targetUrl);
+                    return uri(URI.create(targetUrl)).apply(request);
+                })
                 .build();
     }
 

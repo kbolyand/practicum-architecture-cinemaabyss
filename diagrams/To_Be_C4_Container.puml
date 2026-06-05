@@ -1,0 +1,84 @@
+@startuml
+title ИС Кинобездна To Be Container Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(User, "Пользователь")
+System(CinemaSystem, "ИС Кинобездна")
+System_Ext(PaymentSystem, "Платежная система")
+System_Ext(RecommendationSystem, "Внешняя рекомендательная система")
+System_Ext(RabbitMQ, "RabbitMQ")
+
+Container_Boundary(CinemaSystem, "ИС Кинобездна") {
+  Container(WebApp, "Web приложение", "React", "Предоставляет взаимодействие с системой через браузер")
+  Container(MobileApp, "Мобильное приложение", "Kotlin / Swift", "Предоставляет взаимодействие с системой через мобильное приложение")
+  Container(TVApp, "TV приложение", "Java", "Предоставляет взаимодействие с системой через приложение для TV")
+
+  Container(ApiGateway, "API Gateway", "Kong / Go / Java", "Маршрутизация запросов")
+
+  Container(GraphQLBFF, "GraphQL BFF", "Go / Java", "BFF с GraphQL для Web")
+  Container(RestBFF, "Rest BFF", "Go / Java", "BFF с REST для мобильных приложений, tv приложений и т.д.")
+
+  Container(CoreService, "Ядро", "Go / Java", "Ядро общей функциональности и сложных операций")
+  Container(CoreServiceDB, "База данных", "PostgreSQL")
+
+  Container(PaymentService, "Сервис оплаты", "Go / Java", "Оплата подписок")
+  Container(PaymentServiceDB, "База данных", "PostgreSQL", "Хранение информации об оплате")
+
+  Container(UserService, "Сервис управления пользователями", "Go / Java", "Управление пользователями")
+  Container(UserServiceDB, "База данных", "PostgreSQL", "Хранение информации о пользователях")
+
+  Container(VideoService, "Сервис управления фильмами и видео", "Go / Java", "Управление фильмами и видео")
+  Container(VideoServiceDB, "База данных", "PostgreSQL", "Хранение информации о фильмах и видео")
+  Container(VideoS3Storage, "S3 хранилище видео", "S3", "Хранение видео")
+
+  Container(SubscriptionAndDiscountService, "Сервис управления подписками и скидками", "Go / Java", "Сервис управления подписками и скидками")
+  Container(SubscriptionAndDiscountServiceDB, "База данных", "PostgreSQL", "Хранение информации об подписках и скидках")
+
+  Container(HistoryAndUserSelectService, "Сервис управления историей просмотров и сохраненок пользователя", "Go / Java")
+  Container(HistoryAndUserSelectServiceDB, "База данных", "PostgreSQL", "Хранение истории просмотров и сохраненок пользователя")
+}
+
+Rel(CoreService, CoreServiceDB, "Чтение и запись информации", "SQL")
+Rel(PaymentService, PaymentServiceDB, "Чтение и запись информации", "SQL")
+Rel(UserService, UserServiceDB, "Чтение и запись информации", "SQL")
+Rel(VideoService, VideoServiceDB, "Чтение и запись информации", "SQL")
+Rel(VideoService, VideoS3Storage, "Чтение и запись информации", "S3 / Stream")
+Rel(SubscriptionAndDiscountService, SubscriptionAndDiscountServiceDB, "Чтение и запись информации", "SQL")
+Rel(HistoryAndUserSelectService, HistoryAndUserSelectServiceDB, "Чтение и запись информации", "SQL")
+
+Rel(User, WebApp, "Работа с системой", "HTTP / REST")
+Rel(User, MobileApp, "Работа с системой", "HTTP / REST")
+Rel(User, TVApp, "Работа с системой", "HTTP / REST")
+
+Rel(WebApp, ApiGateway, "Отправка запроса на действие", "HTTP / GraphQL")
+Rel(MobileApp, ApiGateway, "Отправка запроса на действие", "HTTP / REST")
+Rel(TVApp, ApiGateway, "Отправка запроса на действие", "HTTP / REST")
+
+Rel(ApiGateway, UserService, "Управление пользователями", "HTTP / REST")
+Rel(ApiGateway, GraphQLBFF, "Отправка запроса на действие в формате GraphQL", "HTTP / GraphQL")
+Rel(ApiGateway, RestBFF, "Отправка запроса на действие в формате REST", "HTTP / REST")
+
+Rel(GraphQLBFF, CoreService, "Отправка запроса на действие по общим и сложным операциям(статус пользователя, оплата, скидки и более сложные сценарии)", "HTTP / REST")
+Rel(RestBFF, CoreService, "Отправка запроса на действие по общим и сложным операциям(статус пользователя, оплата, скидки и более сложные сценарии)", "HTTP / REST")
+
+Rel(GraphQLBFF, VideoService, "Поиск видео и просмотр", "HTTP / REST / Stream")
+Rel(RestBFF, VideoService, "Поиск видео и просмотр", "HTTP / REST / Stream")
+
+Rel(GraphQLBFF, HistoryAndUserSelectService, "Просмотр истории поиска и просмотренных видео", "HTTP / REST")
+Rel(RestBFF, HistoryAndUserSelectService, "Просмотр истории поиска и просмотренных видео", "HTTP / REST")
+
+Rel(CoreService, PaymentService, "Актуализация информации об операциях оплаты", "HTTP / REST")
+Rel(CoreService, SubscriptionAndDiscountService, "Актуализация информации об подписках и скидках", "HTTP / REST")
+Rel(CoreService, VideoService, "Получение информации о фильме", "HTTP / REST")
+Rel(CoreService, HistoryAndUserSelectService, "Получение истории просмотров и выбранных фильмов","HTTP / REST")
+Rel(CoreService, RabbitMQ, "Запрос на получение рекомендаций","AMQP")
+Rel(RabbitMQ, CoreService, "Рекомендации", "AMQP")
+
+Rel(RabbitMQ, RecommendationSystem, "Запрос", "AMQP")
+Rel(RecommendationSystem, RabbitMQ, "Ответ", "AMQP")
+
+Rel(PaymentService, PaymentSystem, "Оплата", "REST")
+@enduml

@@ -1,0 +1,23 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: events
+  cloud:
+    function:
+      definition: processMessage
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:kafka:9092}
+      bindings:
+        messageSupplier-out-0:
+          destination: movie-events
+        messageSupplier-out-1:
+          destination: user-events
+        messageSupplier-out-2:
+          destination: payment-events
+        processMessage-in-0:
+          destination: movie-events,user-events,payment-events
+          group: cinema
